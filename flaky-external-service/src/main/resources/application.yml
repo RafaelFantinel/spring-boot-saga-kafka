@@ -1,0 +1,26 @@
+server:
+  port: ${SERVER_PORT:8090}
+
+spring:
+  application:
+    name: flaky-external-service
+
+flaky:
+  failure-rate: ${FLAKY_FAILURE_RATE:40}
+  slow-response-delay-ms: ${FLAKY_SLOW_RESPONSE_DELAY_MS:3000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${MANAGEMENT_ZIPKIN_TRACING_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{traceId:-},%X{spanId:-}]"

@@ -1,0 +1,59 @@
+{
+  "title": "Reference Architecture Overview",
+  "uid": "refarch-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "JVM Heap Used (bytes) by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+          "legendFormat": "{{job}} - {{id}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP requests/sec by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (job) (rate(http_server_requests_seconds_count[1m]))",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Resilience4j Circuit Breaker State (payment-service, bankCharge)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "resilience4j_circuitbreaker_state{name=\"bankCharge\"}",
+          "legendFormat": "{{state}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Kafka consumer records consumed rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (job) (rate(kafka_consumer_records_consumed_total[1m]))",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    }
+  ]
+}
