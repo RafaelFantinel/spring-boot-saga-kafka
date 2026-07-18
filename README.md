@@ -17,6 +17,11 @@ tracing) across five Spring Boot 3 services coordinated over Kafka.
 
 ## Architecture
 
+The diagrams below are the short version. For the complete architectural
+view - component internals, message contracts, happy/compensation sequence
+flows, the outbox mechanism, resilience wiring, observability and both
+deployment topologies - see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
 ```mermaid
 flowchart TB
     subgraph Client
@@ -99,6 +104,17 @@ stateDiagram-v2
 | inventory-service | 8084 | Reserves/releases stock with optimistic locking |
 | flaky-external-service | 8090 | Simulated bank; randomly fails or stalls to exercise the circuit breaker |
 
+The two services with a human-facing HTTP surface publish OpenAPI 3 docs
+(springdoc), so you can drive the demo from a browser instead of `curl`:
+
+| | Swagger UI | OpenAPI JSON |
+|---|---|---|
+| order-service | http://localhost:8081/swagger-ui.html | `/v3/api-docs` |
+| flaky-external-service | http://localhost:8090/swagger-ui.html | `/v3/api-docs` |
+
+The remaining three services are Kafka consumers with no public REST API -
+they expose only `/actuator/**`.
+
 ## Why these patterns
 
 **Transactional outbox (order-service).** Writing a new order to Postgres and
@@ -153,6 +169,11 @@ first writer's update. `InventoryReservationService` catches that and retries
 against a freshly re-read row, bounded at 5 attempts - correct under
 contention without holding locks.
 
+> Each pattern has a dedicated diagram in the architecture doc:
+> [outbox](docs/ARCHITECTURE.md#7-transactional-outbox),
+> [saga state machine](docs/ARCHITECTURE.md#6-saga-state-machine),
+> [resilience wiring and breaker states](docs/ARCHITECTURE.md#8-resilience-around-the-bank).
+
 ## How to run
 
 ```bash
@@ -197,9 +218,21 @@ curl -s -X POST http://localhost:8081/orders \
 - **Prometheus targets**: http://localhost:9090/targets - confirm all five
   `/actuator/prometheus` scrape targets are `UP`.
 - **Grafana**: http://localhost:3000 (anonymous viewer access enabled, or
-  admin/admin) - a basic provisioned dashboard ("Reference Architecture
-  Overview") shows JVM heap, HTTP request rate, the payment-service circuit
-  breaker state, and Kafka consumer throughput.
+  admin/admin) - six provisioned dashboards, no manual import needed:
+
+  | Dashboard | UID | What it answers |
+  |---|---|---|
+  | Reference Architecture Overview | `refarch-overview` | One screen: is everything up and moving? |
+  | Saga Flow - End to End | `refarch-flow-e2e` | Orders in/completed/failed, saga step latency, where flows die |
+  | Payment Resilience | `refarch-resilience` | Circuit breaker state, failure rate, retries, fallbacks |
+  | Kafka Messaging | `refarch-kafka` | Producer/consumer throughput, consumer lag per topic |
+  | HTTP API | `refarch-http` | Request rate, latency percentiles, status classes |
+  | JVM & Runtime | `refarch-jvm` | Heap, GC pauses, threads, CPU per service |
+
+  Direct link pattern: `http://localhost:3000/d/<uid>`.
+
+> How metrics, traces and logs fit together (and how one `traceId` spans all
+> five services): [docs/ARCHITECTURE.md § 9 Observability](docs/ARCHITECTURE.md#9-observability).
 
 ### Watch the circuit breaker trip
 
@@ -246,6 +279,9 @@ shared library) - a deliberate tradeoff of a little duplication for
 independent deployability, matching how teams version topic contracts across
 service boundaries in practice.
 
+> Producer/consumer wiring as a diagram, plus the command-vs-event split:
+> [docs/ARCHITECTURE.md § 3 Message contracts](docs/ARCHITECTURE.md#3-message-contracts).
+
 ## Crash recovery
 
 `saga-orchestrator` never keeps saga progress only in memory. Every incoming
@@ -255,11 +291,38 @@ Kafka event re-reads the current `SagaInstance` row from Postgres by
 startup. Kill `-9` the orchestrator mid-saga and restart it: the next event
 for that order picks up exactly where the durable state left off.
 
+> Full transition table and the compensation sequence:
+> [docs/ARCHITECTURE.md § 6 Saga state machine](docs/ARCHITECTURE.md#6-saga-state-machine)
+> and [§ 5 Compensation path](docs/ARCHITECTURE.md#5-compensation-path).
+
+## Running on Kubernetes (minikube)
+
+The same stack also ships as plain Kubernetes manifests in [`k8s/`](k8s/) -
+Postgres, Kafka (KRaft), Zipkin, Prometheus, Grafana and the five services:
+
+```bash
+./k8s/deploy.sh          # starts minikube, builds images into its docker daemon, applies everything
+./k8s/teardown.sh        # drop the namespace (--cluster to also delete the cluster)
+```
+
+No registry is involved: images are built **inside** minikube's docker daemon
+and tagged `:local` with `imagePullPolicy: IfNotPresent`. Everything is
+reachable via NodePort on `minikube ip` (order-service `:30081`, Grafana
+`:30300`, Prometheus `:30090`, Zipkin `:30411`).
+
+Budget ~4 GB for the cluster; on WSL2 that means raising the VM memory limit
+first. See [`k8s/README.md`](k8s/README.md) for the memory setup and the
+deltas versus docker-compose (KRaft quorum addressing, JVM heap caps,
+initContainer gating).
+
+> Both topologies side by side as diagrams:
+> [docs/ARCHITECTURE.md § 10 Deployment topologies](docs/ARCHITECTURE.md#10-deployment-topologies).
+
 ## Local development (without Docker)
 
 ```bash
 mvn -q -DskipTests package        # build every module
-mvn test                          # run all unit tests (12 tests, no external services needed)
+mvn test                          # run all unit tests (13 tests, no external services needed)
 mvn -pl payment-service test      # e.g. just the circuit-breaker test, which boots a real
                                    # local HTTP server and Resilience4j's actual aspects
 ```

@@ -24,14 +24,16 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U refarch" ]
+      # Healthy only after init-databases.sh finishes (inventory_db is created last),
+      # so services gated on service_healthy never start against a half-initialised DB.
+      test: [ "CMD-SHELL", "pg_isready -U refarch -d postgres && psql -U refarch -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='inventory_db'\" | grep -q 1" ]
       interval: 5s
       timeout: 5s
       retries: 10
     networks: [ refarch ]
 
   kafka:
-    image: bitnami/kafka:3.7
+    image: bitnamilegacy/kafka:3.7
     container_name: refarch-kafka
     environment:
       KAFKA_CFG_NODE_ID: "0"
@@ -89,7 +91,9 @@ services:
   # ---------------------------------------------------------------------------
 
   flaky-external-service:
-    build: ./flaky-external-service
+    build:
+      context: .
+      dockerfile: flaky-external-service/Dockerfile
     container_name: refarch-flaky-external-service
     environment:
       SERVER_PORT: 8090
@@ -100,7 +104,9 @@ services:
     networks: [ refarch ]
 
   order-service:
-    build: ./order-service
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
     container_name: refarch-order-service
     environment:
       SERVER_PORT: 8081
@@ -119,7 +125,9 @@ services:
     networks: [ refarch ]
 
   saga-orchestrator:
-    build: ./saga-orchestrator
+    build:
+      context: .
+      dockerfile: saga-orchestrator/Dockerfile
     container_name: refarch-saga-orchestrator
     environment:
       SERVER_PORT: 8082
@@ -138,7 +146,9 @@ services:
     networks: [ refarch ]
 
   payment-service:
-    build: ./payment-service
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
     container_name: refarch-payment-service
     environment:
       SERVER_PORT: 8083
@@ -155,7 +165,9 @@ services:
     networks: [ refarch ]
 
   inventory-service:
-    build: ./inventory-service
+    build:
+      context: .
+      dockerfile: inventory-service/Dockerfile
     container_name: refarch-inventory-service
     environment:
       SERVER_PORT: 8084

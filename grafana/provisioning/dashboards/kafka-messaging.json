@@ -1,0 +1,81 @@
+{
+  "title": "Kafka Messaging",
+  "uid": "refarch-kafka",
+  "tags": [ "refarch", "kafka" ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Records consumed/sec by topic",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum by (topic) (rate(kafka_consumer_fetch_manager_records_consumed_total{topic!=\"\"}[1m]))", "legendFormat": "{{topic}}" } ]
+    },
+    {
+      "id": 2,
+      "title": "Records consumed/sec by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum by (job) (rate(kafka_consumer_fetch_manager_records_consumed_total[1m]))", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 3,
+      "title": "Consumer lag by service/topic (current)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "expr": "sum by (job, topic) (kafka_consumer_fetch_manager_records_lag)", "legendFormat": "{{job}} / {{topic}}" } ]
+    },
+    {
+      "id": 4,
+      "title": "Max consumer lag by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "expr": "max by (job) (kafka_consumer_fetch_manager_records_lag_max)", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 5,
+      "title": "Listener processing rate (success vs failure)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [
+        { "expr": "sum by (job, result) (rate(spring_kafka_listener_seconds_count[1m]))", "legendFormat": "{{job}} - {{result}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Listener avg processing time by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "sum by (job) (rate(spring_kafka_listener_seconds_sum[1m])) / clamp_min(sum by (job) (rate(spring_kafka_listener_seconds_count[1m])), 0.0001)", "legendFormat": "{{job}} avg" },
+        { "expr": "max by (job) (spring_kafka_listener_seconds_max)", "legendFormat": "{{job}} max" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Producer publish rate by service (KafkaTemplate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum by (job, result) (rate(spring_kafka_template_seconds_count[1m]))", "legendFormat": "{{job}} {{result}}" } ]
+    },
+    {
+      "id": 8,
+      "title": "Consumer fetch rate by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "expr": "sum by (job) (kafka_consumer_fetch_manager_fetch_rate)", "legendFormat": "{{job}}" } ]
+    }
+  ]
+}

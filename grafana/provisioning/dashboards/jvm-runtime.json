@@ -1,0 +1,75 @@
+{
+  "title": "JVM & Runtime",
+  "uid": "refarch-jvm",
+  "tags": [ "refarch", "jvm" ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Heap used by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [ { "expr": "sum by (job) (jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 2,
+      "title": "Non-heap used by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [ { "expr": "sum by (job) (jvm_memory_used_bytes{area=\"nonheap\"})", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 3,
+      "title": "GC pause avg / max by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "sum by (job) (rate(jvm_gc_pause_seconds_sum[5m])) / clamp_min(sum by (job) (rate(jvm_gc_pause_seconds_count[5m])), 0.0001)", "legendFormat": "{{job}} avg" },
+        { "expr": "max by (job) (jvm_gc_pause_seconds_max)", "legendFormat": "{{job}} max" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Live threads by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "expr": "jvm_threads_live_threads", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 5,
+      "title": "Process CPU usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "targets": [ { "expr": "process_cpu_usage", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 6,
+      "title": "HikariCP active connections by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        { "expr": "sum by (job) (hikaricp_connections_active)", "legendFormat": "{{job}} active" },
+        { "expr": "sum by (job) (hikaricp_connections_pending)", "legendFormat": "{{job}} pending" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Uptime by service",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "value_and_name" },
+      "targets": [ { "expr": "process_uptime_seconds", "legendFormat": "{{job}}" } ]
+    }
+  ]
+}

@@ -50,7 +50,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "targets": [
         {
-          "expr": "sum by (job) (rate(kafka_consumer_records_consumed_total[1m]))",
+          "expr": "sum by (job) (rate(kafka_consumer_fetch_manager_records_consumed_total[1m]))",
           "legendFormat": "{{job}}"
         }
       ]

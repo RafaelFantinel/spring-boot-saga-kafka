@@ -3,7 +3,6 @@ package com.refarch.orderservice.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -32,8 +31,7 @@ public class OutboxEvent {
     @Column(nullable = false)
     private String eventType;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private String payload;
 
     @Column(nullable = false)

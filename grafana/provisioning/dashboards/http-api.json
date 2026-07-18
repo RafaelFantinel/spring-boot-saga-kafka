@@ -1,0 +1,68 @@
+{
+  "title": "HTTP API",
+  "uid": "refarch-http",
+  "tags": [ "refarch", "http" ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests/sec by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [ { "expr": "sum by (job) (rate(http_server_requests_seconds_count[1m]))", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 2,
+      "title": "5xx error ratio by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } },
+      "targets": [ { "expr": "sum by (job) (rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])) / clamp_min(sum by (job) (rate(http_server_requests_seconds_count[5m])), 0.001)", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 3,
+      "title": "Requests/sec by endpoint",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [ { "expr": "sum by (job, method, uri) (rate(http_server_requests_seconds_count[1m]))", "legendFormat": "{{job}} {{method}} {{uri}}" } ]
+    },
+    {
+      "id": 4,
+      "title": "Avg latency by endpoint",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [ { "expr": "sum by (job, uri) (rate(http_server_requests_seconds_sum[5m])) / clamp_min(sum by (job, uri) (rate(http_server_requests_seconds_count[5m])), 0.0001)", "legendFormat": "{{job}} {{uri}}" } ]
+    },
+    {
+      "id": 5,
+      "title": "Max latency by service (worst observed)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [ { "expr": "max by (job, uri) (http_server_requests_seconds_max)", "legendFormat": "{{job}} {{uri}}" } ]
+    },
+    {
+      "id": 6,
+      "title": "Responses by outcome",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "stacking": { "mode": "normal" }, "fillOpacity": 30 } } },
+      "targets": [ { "expr": "sum by (outcome) (rate(http_server_requests_seconds_count[1m]))", "legendFormat": "{{outcome}}" } ]
+    },
+    {
+      "id": 7,
+      "title": "In-flight (active) requests by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "expr": "sum by (job) (http_server_requests_active_seconds_count)", "legendFormat": "{{job}}" } ]
+    }
+  ]
+}

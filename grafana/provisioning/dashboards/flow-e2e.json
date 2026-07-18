@@ -1,0 +1,172 @@
+{
+  "title": "Saga Flow - End to End",
+  "uid": "refarch-flow-e2e",
+  "tags": [ "refarch", "flow", "saga" ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "rate_win",
+        "label": "Rate window",
+        "type": "custom",
+        "query": "1m,5m,15m",
+        "current": { "text": "5m", "value": "5m" },
+        "options": [
+          { "text": "1m", "value": "1m", "selected": false },
+          { "text": "5m", "value": "5m", "selected": true },
+          { "text": "15m", "value": "15m", "selected": false }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Pipeline throughput (records entering each stage, msg/s)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 1,
+      "title": "1. Orders accepted (POST /orders)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value_and_name" },
+      "targets": [ { "expr": "sum(rate(http_server_requests_seconds_count{job=\"order-service\",uri=\"/orders\",method=\"POST\"}[$rate_win]))", "legendFormat": "orders/s" } ]
+    },
+    {
+      "id": 2,
+      "title": "2. saga <- order-events",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "cps", "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value_and_name" },
+      "targets": [ { "expr": "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{job=\"saga-orchestrator\",topic=\"order-events\"}[$rate_win]))", "legendFormat": "msg/s" } ]
+    },
+    {
+      "id": 3,
+      "title": "3. payment <- payment-commands",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "cps", "color": { "mode": "fixed", "fixedColor": "purple" } } },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value_and_name" },
+      "targets": [ { "expr": "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{job=\"payment-service\",topic=\"payment-commands\"}[$rate_win]))", "legendFormat": "msg/s" } ]
+    },
+    {
+      "id": 4,
+      "title": "4. saga <- payment-events",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "cps", "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value_and_name" },
+      "targets": [ { "expr": "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{job=\"saga-orchestrator\",topic=\"payment-events\"}[$rate_win]))", "legendFormat": "msg/s" } ]
+    },
+    {
+      "id": 5,
+      "title": "5. inventory <- inventory-commands",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "cps", "color": { "mode": "fixed", "fixedColor": "yellow" } } },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value_and_name" },
+      "targets": [ { "expr": "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{job=\"inventory-service\",topic=\"inventory-commands\"}[$rate_win]))", "legendFormat": "msg/s" } ]
+    },
+    {
+      "id": 6,
+      "title": "6. saga <- inventory-events",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "cps", "color": { "mode": "fixed", "fixedColor": "red" } } },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "value_and_name" },
+      "targets": [ { "expr": "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{job=\"saga-orchestrator\",topic=\"inventory-events\"}[$rate_win]))", "legendFormat": "msg/s" } ]
+    },
+    {
+      "id": 110,
+      "type": "row",
+      "title": "Processing health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 }
+    },
+    {
+      "id": 10,
+      "title": "Kafka listener processing rate (success vs failure)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "cps", "custom": { "drawStyle": "line", "fillOpacity": 20 } } },
+      "targets": [
+        { "expr": "sum by (job) (rate(spring_kafka_listener_seconds_count{result=\"success\"}[$rate_win]))", "legendFormat": "{{job}} OK" },
+        { "expr": "sum by (job) (rate(spring_kafka_listener_seconds_count{result=\"failure\"}[$rate_win]))", "legendFormat": "{{job}} FAILED" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Kafka listener avg processing time by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "sum by (job) (rate(spring_kafka_listener_seconds_sum[$rate_win])) / clamp_min(sum by (job) (rate(spring_kafka_listener_seconds_count[$rate_win])), 0.0001)", "legendFormat": "{{job}} avg" }
+      ]
+    },
+    {
+      "id": 120,
+      "type": "row",
+      "title": "Per-stage detail",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 }
+    },
+    {
+      "id": 20,
+      "title": "Order ingest: rate & avg latency (POST /orders)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_sum{job=\"order-service\",uri=\"/orders\",method=\"POST\"}[$rate_win])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"order-service\",uri=\"/orders\",method=\"POST\"}[$rate_win])), 0.0001)", "legendFormat": "avg latency" },
+        { "expr": "max(http_server_requests_seconds_max{job=\"order-service\",uri=\"/orders\",method=\"POST\"})", "legendFormat": "max latency" }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Payment stage - Circuit Breaker state (bankCharge)",
+      "type": "state-timeline",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 80 } } },
+      "targets": [
+        { "expr": "resilience4j_circuitbreaker_state{name=\"bankCharge\"} > 0", "legendFormat": "{{state}}" }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Payment result rate (bank charge success/fail/ignored)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [
+        { "expr": "sum by (kind) (rate(resilience4j_circuitbreaker_calls_seconds_count{name=\"bankCharge\"}[$rate_win]))", "legendFormat": "{{kind}}" }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Producer publish rate by service (KafkaTemplate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [
+        { "expr": "sum by (job, result) (rate(spring_kafka_template_seconds_count[$rate_win]))", "legendFormat": "{{job}} {{result}}" }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Consumer lag by service/topic (records behind)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        { "expr": "sum by (job, topic) (kafka_consumer_fetch_manager_records_lag)", "legendFormat": "{{job}} / {{topic}}" }
+      ]
+    }
+  ]
+}

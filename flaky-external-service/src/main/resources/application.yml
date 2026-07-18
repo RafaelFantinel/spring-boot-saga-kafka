@@ -9,6 +9,13 @@ flaky:
   failure-rate: ${FLAKY_FAILURE_RATE:40}
   slow-response-delay-ms: ${FLAKY_SLOW_RESPONSE_DELAY_MS:3000}
 
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
 management:
   endpoints:
     web:

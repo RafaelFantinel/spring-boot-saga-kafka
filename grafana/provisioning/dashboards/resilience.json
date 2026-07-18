@@ -1,0 +1,96 @@
+{
+  "title": "Payment Resilience (Circuit Breaker / Retry)",
+  "uid": "refarch-resilience",
+  "tags": [ "refarch", "resilience", "payment" ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Circuit Breaker state (bankCharge)",
+      "type": "state-timeline",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 80 } } },
+      "targets": [ { "expr": "resilience4j_circuitbreaker_state{name=\"bankCharge\"} > 0", "legendFormat": "{{state}}" } ]
+    },
+    {
+      "id": 2,
+      "title": "Failure rate (%)",
+      "type": "gauge",
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 40 }, { "color": "red", "value": 50 } ] } } },
+      "targets": [ { "expr": "max(resilience4j_circuitbreaker_failure_rate{name=\"bankCharge\"})", "legendFormat": "failure rate" } ]
+    },
+    {
+      "id": 3,
+      "title": "Slow call rate (%)",
+      "type": "gauge",
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 60 }, { "color": "red", "value": 100 } ] } } },
+      "targets": [ { "expr": "max(resilience4j_circuitbreaker_slow_call_rate{name=\"bankCharge\"})", "legendFormat": "slow call rate" } ]
+    },
+    {
+      "id": 4,
+      "title": "Buffered calls",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [ { "expr": "sum by (kind) (resilience4j_circuitbreaker_buffered_calls{name=\"bankCharge\"})", "legendFormat": "{{kind}}" } ]
+    },
+    {
+      "id": 5,
+      "title": "Call rate by outcome (successful/failed/ignored)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum by (kind) (rate(resilience4j_circuitbreaker_calls_seconds_count{name=\"bankCharge\"}[1m]))", "legendFormat": "{{kind}}" } ]
+    },
+    {
+      "id": 6,
+      "title": "Calls not permitted/sec (fail-fast while OPEN)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum(rate(resilience4j_circuitbreaker_not_permitted_calls_total{name=\"bankCharge\"}[1m]))", "legendFormat": "not permitted" } ]
+    },
+    {
+      "id": 7,
+      "title": "Retry outcomes/sec",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum by (kind) (rate(resilience4j_retry_calls_total{name=\"bankCharge\"}[1m]))", "legendFormat": "{{kind}}" } ]
+    },
+    {
+      "id": 8,
+      "title": "Bank charge avg / max latency (by outcome)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "sum by (kind) (rate(resilience4j_circuitbreaker_calls_seconds_sum{name=\"bankCharge\"}[5m])) / clamp_min(sum by (kind) (rate(resilience4j_circuitbreaker_calls_seconds_count{name=\"bankCharge\"}[5m])), 0.0001)", "legendFormat": "{{kind}} avg" },
+        { "expr": "max(resilience4j_circuitbreaker_calls_seconds_max{name=\"bankCharge\"})", "legendFormat": "max" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Retry state: successful vs with-retry vs failed",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": [ "lastNotNull" ] }, "legend": { "displayMode": "table", "placement": "right", "values": [ "value" ] } },
+      "targets": [ { "expr": "sum by (kind) (resilience4j_retry_calls_total{name=\"bankCharge\"})", "legendFormat": "{{kind}}" } ]
+    },
+    {
+      "id": 10,
+      "title": "Payment listener processing (success/failure)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 30 },
+      "fieldConfig": { "defaults": { "unit": "cps" } },
+      "targets": [ { "expr": "sum by (result) (rate(spring_kafka_listener_seconds_count{job=\"payment-service\"}[1m]))", "legendFormat": "{{result}}" } ]
+    }
+  ]
+}
