@@ -512,6 +512,28 @@ See [`k8s/README.md`](../k8s/README.md) for the deploy script and memory setup.
 
 ---
 
+### AWS (ECS Fargate) - target deployment
+
+A proposed production-style topology on AWS. It is a design target only; this repo
+does not ship Terraform/CDK for it yet. Editable source:
+[`diagrams/aws-ecs-architecture.drawio`](diagrams/aws-ecs-architecture.drawio)
+(open it in [diagrams.net](https://app.diagrams.net) or the VS Code Draw.io extension).
+
+![AWS ECS architecture](diagrams/aws-ecs-architecture.png)
+
+| Local / k8s component | AWS service |
+| --- | --- |
+| 5 Spring Boot containers | Amazon ECS on AWS Fargate (one ECS service per app, images in ECR) |
+| `postgres:16` (orders_db, saga_db, inventory_db) | Amazon RDS for PostgreSQL, Multi-AZ, credentials in Secrets Manager |
+| Kafka KRaft | Amazon MSK (same 5 topics) |
+| k8s Service DNS names | ECS Service Connect (Cloud Map), so `FLAKY_SERVICE_URL` etc. keep working |
+| Zipkin | ADOT collector sidecar (Zipkin receiver) to AWS X-Ray |
+| Prometheus / Grafana | ADOT remote write to Amazon Managed Prometheus, dashboards in Amazon Managed Grafana |
+| `docker logs` | CloudWatch Logs (`awslogs` driver) |
+
+Only `order-service` sits behind the public Application Load Balancer; every
+other service, MSK and RDS live in private subnets.
+
 ## 11. Design boundaries
 
 What this architecture deliberately does *not* do - see the README's
